@@ -2,205 +2,185 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 
 export default function CartPage() {
   const [cart, setCart] = useState([]);
-  const [cartCount, setCartCount] = useState(0);
   const [mounted, setMounted] = useState(false);
+  const router = useRouter();
 
   useEffect(() => {
     setMounted(true);
-    const stored = JSON.parse(localStorage.getItem('cart') || '[]');
-    setCart(stored);
-    setCartCount(stored.reduce((s, i) => s + i.quantity, 0));
-
-    const onUpdate = () => {
-      const c = JSON.parse(localStorage.getItem('cart') || '[]');
-      setCart(c);
-      setCartCount(c.reduce((s, i) => s + i.quantity, 0));
-    };
-    window.addEventListener('cartUpdate', onUpdate);
-    return () => window.removeEventListener('cartUpdate', onUpdate);
+    const load = () => setCart(JSON.parse(localStorage.getItem('cart') || '[]'));
+    load();
+    window.addEventListener('cartUpdate', load);
+    return () => window.removeEventListener('cartUpdate', load);
   }, []);
 
-  const updateQty = (id, delta) => {
-    const updated = cart.map((item) =>
-      item.id === id ? { ...item, quantity: Math.max(1, item.quantity + delta) } : item
-    );
+  const save = (updated) => {
     setCart(updated);
     localStorage.setItem('cart', JSON.stringify(updated));
     window.dispatchEvent(new Event('cartUpdate'));
   };
 
-  const remove = (id) => {
-    const updated = cart.filter((item) => item.id !== id);
-    setCart(updated);
-    localStorage.setItem('cart', JSON.stringify(updated));
-    window.dispatchEvent(new Event('cartUpdate'));
-  };
-
-  const clearCart = () => {
-    setCart([]);
-    localStorage.removeItem('cart');
-    window.dispatchEvent(new Event('cartUpdate'));
-  };
+  const updateQty = (id, d) => save(cart.map((i) => i.id === id ? { ...i, quantity: Math.max(1, i.quantity + d) } : i));
+  const remove = (id) => save(cart.filter((i) => i.id !== id));
+  const clear = () => { localStorage.removeItem('cart'); setCart([]); window.dispatchEvent(new Event('cartUpdate')); };
 
   const total = cart.reduce((s, i) => s + i.price * i.quantity, 0);
-  const totalItems = cart.reduce((s, i) => s + i.quantity, 0);
+  const count = cart.reduce((s, i) => s + i.quantity, 0);
+  const savings = cart.reduce((s, i) => s + (i.old_price > i.price ? (i.old_price - i.price) * i.quantity : 0), 0);
 
   if (!mounted) return null;
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#0A0A0A]">
-      <Navbar cartCount={cartCount} />
+    <div className="min-h-screen bg-white dark:bg-[#0c0c0c]">
+      <Navbar cartCount={count} />
 
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-28 pb-16">
-        <div className="mb-10">
-          <h1 className="font-display font-bold text-4xl md:text-5xl text-charcoal dark:text-white mb-2">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-28 pb-16">
+        <div className="flex items-center gap-3 mb-8 animate-fade-up" style={{ animationFillMode:'both', opacity:0 }}>
+          <h1 className="font-display font-bold text-[#111827] dark:text-white" style={{ fontSize: 'clamp(2rem,5vw,3rem)', letterSpacing:'-0.02em' }}>
             سلة المشتريات
           </h1>
-          <p className="text-muted dark:text-gray-400 font-body text-sm">
-            {totalItems > 0 ? `${totalItems} منتج في سلتك` : 'سلتك فارغة'}
-          </p>
-          <div className="gold-divider mt-4" />
+          {count > 0 && (
+            <span className="badge-gold">{count} منتج</span>
+          )}
         </div>
+        <div className="gold-line mb-8" />
 
-        {cart.length === 0 ? (
-          <div className="text-center py-24 animate-fade-in">
-            <div className="w-24 h-24 rounded-3xl card-gradient flex items-center justify-center mx-auto mb-6">
-              <svg className="w-12 h-12 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+        {/* Empty */}
+        {cart.length === 0 && (
+          <div className="text-center py-24 animate-scale-in">
+            <div className="w-20 h-20 rounded-3xl card-mesh mx-auto mb-5 flex items-center justify-center">
+              <svg className="w-9 h-9 text-[#9CA3AF]" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"/>
               </svg>
             </div>
-            <h2 className="font-display font-semibold text-2xl text-charcoal dark:text-white mb-3">
-              سلتك فارغة
-            </h2>
-            <p className="text-muted dark:text-gray-400 font-body text-sm mb-8">
-              استكشف منتجاتنا الفاخرة وأضف ما يعجبك
-            </p>
-            <Link
-              href="/"
-              className="inline-flex items-center gap-2 px-8 py-4 rounded-2xl btn-gold text-charcoal font-body font-medium"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-              </svg>
-              تسوق الآن
-            </Link>
+            <h2 className="font-display font-semibold text-2xl text-[#111827] dark:text-white mb-2">السلة فارغة</h2>
+            <p className="text-sm font-body text-[#6B7280] mb-7">تصفح منتجاتنا وأضف ما يعجبك</p>
+            <Link href="/" className="btn-dark px-8 py-3.5 rounded-2xl text-sm inline-block">تصفح المنتجات</Link>
           </div>
-        ) : (
+        )}
+
+        {/* Cart layout */}
+        {cart.length > 0 && (
           <div className="grid lg:grid-cols-3 gap-8">
             {/* Items */}
-            <div className="lg:col-span-2 space-y-4">
-              {cart.map((item, i) => (
-                <div
-                  key={item.id}
-                  className="flex gap-4 p-4 rounded-2xl card-gradient animate-fade-up border border-white/50 dark:border-gray-800/50"
-                  style={{ animationDelay: `${i * 0.1}s`, animationFillMode: 'both' }}
-                >
-                  {/* Image */}
-                  <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-xl overflow-hidden flex-shrink-0 bg-gray-100 dark:bg-gray-800 relative">
-                    {item.image ? (
-                      <Image src={item.image} alt={item.name} fill className="object-cover" sizes="96px" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-gray-300">
-                        <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
-                      </div>
-                    )}
-                  </div>
+            <div className="lg:col-span-2 space-y-3">
+              {cart.map((item, i) => {
+                const mainImg = (() => {
+                  try { const imgs = Array.isArray(item.images) ? item.images : JSON.parse(item.images||'[]'); return imgs[0] || item.image; }
+                  catch { return item.image; }
+                })();
+                return (
+                  <div key={item.id}
+                    className="product-card flex gap-4 p-4 opacity-0 animate-fade-up"
+                    data-d={String(Math.min(i+1,6))}
+                    style={{ animationFillMode:'forwards' }}>
 
-                  {/* Info */}
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-display font-semibold text-lg text-charcoal dark:text-white truncate">
-                      {item.name}
-                    </h3>
-                    <p className="text-[#C9A84C] font-body font-medium text-sm mt-1">
-                      {Number(item.price).toLocaleString()} ر.س
-                    </p>
+                    {/* Image */}
+                    <div className="relative flex-shrink-0 rounded-2xl overflow-hidden bg-gray-50 dark:bg-gray-800"
+                      style={{ width: 80, height: 80 }}>
+                      {mainImg
+                        ? <Image src={mainImg} alt={item.name} fill className="object-cover" sizes="80px" />
+                        : <div className="w-full h-full card-mesh" />}
+                    </div>
 
-                    <div className="flex items-center justify-between mt-3">
-                      {/* Qty controls */}
-                      <div className="flex items-center gap-2 bg-white/60 dark:bg-black/20 rounded-xl px-3 py-1.5">
-                        <button
-                          onClick={() => updateQty(item.id, -1)}
-                          className="w-6 h-6 flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-charcoal dark:text-white font-body"
-                        >
-                          −
-                        </button>
-                        <span className="w-6 text-center font-display font-semibold text-sm text-charcoal dark:text-white">
-                          {item.quantity}
-                        </span>
-                        <button
-                          onClick={() => updateQty(item.id, 1)}
-                          className="w-6 h-6 flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-charcoal dark:text-white font-body"
-                        >
-                          +
-                        </button>
-                      </div>
-
-                      <div className="flex items-center gap-3">
-                        <span className="font-display font-semibold text-charcoal dark:text-white">
-                          {(item.price * item.quantity).toLocaleString()} ر.س
-                        </span>
-                        <button
-                          onClick={() => remove(item.id)}
-                          className="w-8 h-8 rounded-xl flex items-center justify-center text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    {/* Info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex justify-between gap-2">
+                        <h3 className="font-display font-semibold text-base text-[#111827] dark:text-white truncate leading-snug">
+                          {item.name}
+                        </h3>
+                        <button onClick={() => remove(item.id)}
+                          className="w-7 h-7 rounded-lg flex-shrink-0 flex items-center justify-center transition-colors hover:bg-red-50 dark:hover:bg-red-900/20"
+                          style={{ color: '#dc2626' }}>
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/>
                           </svg>
                         </button>
                       </div>
+
+                      <div className="flex items-center justify-between mt-2.5">
+                        {/* Qty */}
+                        <div className="flex items-center gap-1 rounded-xl p-0.5"
+                          style={{ background: '#F8F9FB', border: '1.5px solid rgba(0,0,0,0.09)' }}>
+                          {[[-1,'−'],[null,null],[1,'+']].map(([d,lbl],idx) => d===null ? (
+                            <span key="v" className="w-8 text-center font-display font-bold text-sm text-[#111827] dark:text-white">
+                              {item.quantity}
+                            </span>
+                          ) : (
+                            <button key={idx} onClick={() => updateQty(item.id,d)}
+                              className="w-7 h-7 rounded-lg flex items-center justify-center text-sm transition-all hover:scale-110"
+                              style={{ background:'rgba(201,168,76,0.1)', color:'#C9A84C' }}>
+                              {lbl}
+                            </button>
+                          ))}
+                        </div>
+
+                        <span className="font-display font-bold text-base text-[#111827] dark:text-white">
+                          {(item.price * item.quantity).toLocaleString('ar-EG')} ج.م
+                        </span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
 
-              <button
-                onClick={clearCart}
-                className="text-xs text-red-400 hover:text-red-500 font-body transition-colors py-2"
-              >
-                إفراغ السلة بالكامل
+              <button onClick={clear}
+                className="text-xs font-body text-[#9CA3AF] hover:text-red-500 transition-colors mt-1 flex items-center gap-1.5">
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6M9 7V4a1 1 0 011-1h4a1 1 0 011 1v3M4 7h16"/>
+                </svg>
+                إفراغ السلة
               </button>
             </div>
 
             {/* Summary */}
             <div className="lg:col-span-1">
-              <div className="sticky top-24 card-gradient rounded-3xl p-6 border border-white/50 dark:border-gray-800/50 animate-fade-in">
-                <h2 className="font-display font-semibold text-xl text-charcoal dark:text-white mb-6">
-                  ملخص الطلب
-                </h2>
+              <div className="sticky top-24 rounded-3xl p-5 animate-fade-in card-mesh"
+                style={{ border:'1px solid rgba(255,255,255,0.7)' }}>
+                <h2 className="font-display font-semibold text-lg text-[#111827] dark:text-white mb-5">ملخص الطلب</h2>
 
-                <div className="space-y-3 mb-6">
-                  <div className="flex justify-between text-sm font-body text-muted dark:text-gray-400">
-                    <span>المنتجات ({totalItems})</span>
-                    <span>{total.toLocaleString()} ر.س</span>
+                <div className="space-y-3 mb-5">
+                  <div className="flex justify-between text-sm font-body text-[#6B7280]">
+                    <span>المنتجات ({count})</span>
+                    <span>{total.toLocaleString('ar-EG')} ج.م</span>
                   </div>
-                  <div className="flex justify-between text-sm font-body text-muted dark:text-gray-400">
+                  {savings > 0 && (
+                    <div className="flex justify-between text-sm font-body" style={{ color:'#10B981' }}>
+                      <span>توفير</span>
+                      <span>-{savings.toLocaleString('ar-EG')} ج.م</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between text-sm font-body text-[#6B7280]">
                     <span>الشحن</span>
-                    <span className="text-green-500">مجاناً</span>
+                    <span className="font-semibold" style={{ color:'#10B981' }}>مجاناً</span>
                   </div>
-                  <div className="gold-divider" />
-                  <div className="flex justify-between font-display font-semibold text-xl text-charcoal dark:text-white">
-                    <span>الإجمالي</span>
-                    <span>{total.toLocaleString()} ر.س</span>
+                  <div className="gold-line" />
+                  <div className="flex justify-between">
+                    <span className="font-display font-semibold text-lg text-[#111827] dark:text-white">الإجمالي</span>
+                    <span className="font-display font-bold text-xl text-[#111827] dark:text-white">{total.toLocaleString('ar-EG')} ج.م</span>
                   </div>
                 </div>
 
-                <button className="w-full py-4 rounded-2xl btn-gold text-charcoal font-body font-medium text-base">
-                  إتمام الشراء
+                <button
+                  onClick={() => router.push('/checkout')}
+                  className="btn-gold w-full py-3.5 rounded-2xl text-base mb-3">
+                  إتمام الطلب
                 </button>
-
-                <Link
-                  href="/"
-                  className="mt-3 w-full py-3 rounded-2xl border border-gray-200 dark:border-gray-700 text-muted dark:text-gray-400 font-body text-sm text-center block hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-                >
+                <Link href="/" className="btn-outline w-full py-3 rounded-2xl text-sm text-center block">
                   متابعة التسوق
                 </Link>
+
+                <div className="flex items-center justify-center gap-1.5 mt-4 text-[#9CA3AF]">
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.8}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                  </svg>
+                  <span className="text-xs font-body">دفع آمن ومشفر</span>
+                </div>
               </div>
             </div>
           </div>
