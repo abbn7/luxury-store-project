@@ -1,4 +1,5 @@
 import './globals.css';
+import { SpeedInsights } from '@vercel/speed-insights/next';
 
 export const metadata = {
   title: 'Luxe Store',
@@ -18,6 +19,7 @@ export default function RootLayout({ children }) {
       </head>
       <body className="min-h-screen bg-white dark:bg-[#0c0c0c] transition-colors duration-300">
         {children}
+        <SpeedInsights />
       </body>
     </html>
   );
